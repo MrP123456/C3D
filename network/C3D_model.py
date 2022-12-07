@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 from mypath import Path
 
+
 class C3D(nn.Module):
     """
     The C3D network.
@@ -44,21 +45,31 @@ class C3D(nn.Module):
     def forward(self, x):
 
         x = self.relu(self.conv1(x))
+        # [1, 64, 16, 112, 112]
+        f112 = x
         x = self.pool1(x)
 
         x = self.relu(self.conv2(x))
+        # [1, 128, 16, 56, 56]
+        f56 = x
         x = self.pool2(x)
 
         x = self.relu(self.conv3a(x))
         x = self.relu(self.conv3b(x))
+        # [1, 256, 8, 28, 28]
+        f28 = x
         x = self.pool3(x)
 
         x = self.relu(self.conv4a(x))
         x = self.relu(self.conv4b(x))
+        # [1, 512, 4, 14, 14]
+        f14 = x
         x = self.pool4(x)
 
         x = self.relu(self.conv5a(x))
         x = self.relu(self.conv5b(x))
+        # [1, 512, 2, 7, 7]
+        f7 = x
         x = self.pool5(x)
 
         x = x.view(-1, 8192)
@@ -69,42 +80,42 @@ class C3D(nn.Module):
 
         logits = self.fc8(x)
 
-        return logits
+        return logits, f112, f56, f28, f14, f7
 
     def __load_pretrained_weights(self):
         """Initialiaze network."""
         corresp_name = {
-                        # Conv1
-                        "features.0.weight": "conv1.weight",
-                        "features.0.bias": "conv1.bias",
-                        # Conv2
-                        "features.3.weight": "conv2.weight",
-                        "features.3.bias": "conv2.bias",
-                        # Conv3a
-                        "features.6.weight": "conv3a.weight",
-                        "features.6.bias": "conv3a.bias",
-                        # Conv3b
-                        "features.8.weight": "conv3b.weight",
-                        "features.8.bias": "conv3b.bias",
-                        # Conv4a
-                        "features.11.weight": "conv4a.weight",
-                        "features.11.bias": "conv4a.bias",
-                        # Conv4b
-                        "features.13.weight": "conv4b.weight",
-                        "features.13.bias": "conv4b.bias",
-                        # Conv5a
-                        "features.16.weight": "conv5a.weight",
-                        "features.16.bias": "conv5a.bias",
-                         # Conv5b
-                        "features.18.weight": "conv5b.weight",
-                        "features.18.bias": "conv5b.bias",
-                        # fc6
-                        "classifier.0.weight": "fc6.weight",
-                        "classifier.0.bias": "fc6.bias",
-                        # fc7
-                        "classifier.3.weight": "fc7.weight",
-                        "classifier.3.bias": "fc7.bias",
-                        }
+            # Conv1
+            "features.0.weight": "conv1.weight",
+            "features.0.bias": "conv1.bias",
+            # Conv2
+            "features.3.weight": "conv2.weight",
+            "features.3.bias": "conv2.bias",
+            # Conv3a
+            "features.6.weight": "conv3a.weight",
+            "features.6.bias": "conv3a.bias",
+            # Conv3b
+            "features.8.weight": "conv3b.weight",
+            "features.8.bias": "conv3b.bias",
+            # Conv4a
+            "features.11.weight": "conv4a.weight",
+            "features.11.bias": "conv4a.bias",
+            # Conv4b
+            "features.13.weight": "conv4b.weight",
+            "features.13.bias": "conv4b.bias",
+            # Conv5a
+            "features.16.weight": "conv5a.weight",
+            "features.16.bias": "conv5a.bias",
+            # Conv5b
+            "features.18.weight": "conv5b.weight",
+            "features.18.bias": "conv5b.bias",
+            # fc6
+            "classifier.0.weight": "fc6.weight",
+            "classifier.0.bias": "fc6.bias",
+            # fc7
+            "classifier.3.weight": "fc7.weight",
+            "classifier.3.bias": "fc7.bias",
+        }
 
         p_dict = torch.load(Path.model_dir())
         s_dict = self.state_dict()
@@ -124,6 +135,7 @@ class C3D(nn.Module):
                 m.weight.data.fill_(1)
                 m.bias.data.zero_()
 
+
 def get_1x_lr_params(model):
     """
     This generator returns all the parameters for conv and two fc layers of the net.
@@ -135,6 +147,7 @@ def get_1x_lr_params(model):
             if k.requires_grad:
                 yield k
 
+
 def get_10x_lr_params(model):
     """
     This generator returns all the parameters for the last fc layer of the net.
@@ -145,9 +158,9 @@ def get_10x_lr_params(model):
             if k.requires_grad:
                 yield k
 
+
 if __name__ == "__main__":
     inputs = torch.rand(1, 3, 16, 112, 112)
-    net = C3D(num_classes=101, pretrained=True)
+    net = C3D(num_classes=101, pretrained=False)
 
     outputs = net.forward(inputs)
-    print(outputs.size())
